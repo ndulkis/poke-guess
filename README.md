@@ -13,7 +13,7 @@ A Pokemon guessing game built with React, Vite, and Tailwind CSS for CPSC 349.
 
    ```bash
    git clone <repo-url>
-   cd PokeGuess
+   cd poke-guess
    ```
 
 2. **Install dependencies**
