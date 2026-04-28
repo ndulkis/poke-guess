@@ -5,8 +5,6 @@ import './index.css'
 import Home from './pages/home.jsx'
 import Game from './pages/game.jsx'
 import Pokedex from './pages/pokedex.jsx'
-import RankSummary from './pages/rankSummary.jsx'
-import DevComponents from './pages/dev/components.jsx'
 import PokemonDetail from './pages/pokemonDetail.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -16,9 +14,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/" element={<Home />} />
         <Route path="/game" element={<Game />} />
         <Route path="/pokedex" element={<Pokedex />} />
-        <Route path="/rank-summary" element={<RankSummary />} />
         <Route path="/pokemon/:id" element={<PokemonDetail />} />
-        <Route path="/dev/components" element={<DevComponents />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,
