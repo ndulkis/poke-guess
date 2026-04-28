@@ -1,9 +1,22 @@
-import React from 'react'
+import React, { createContext, useState, useContext } from 'react';
 
-function GameContext() {
+const GameContext = createContext();
+
+export function GameProvider({ children }) {
+  const [isGameActive, setIsGameActive] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
+
+  const startGame = () => setIsGameActive(true);
+  const endGame = (score) => {
+    setIsGameActive(false);
+    setFinalScore(score);
+  };
+
   return (
-    <div>GameContext</div>
-  )
+    <GameContext.Provider value={{ isGameActive, startGame, endGame, finalScore }}>
+      {children}
+    </GameContext.Provider>
+  );
 }
 
-export default GameContext
+export const useGame = () => useContext(GameContext);
