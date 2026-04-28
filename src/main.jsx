@@ -5,19 +5,20 @@ import './index.css'
 import Home from './pages/home.jsx'
 import Game from './pages/game.jsx'
 import Pokedex from './pages/pokedex.jsx'
-import RankSummary from './pages/rankSummary.jsx'
-import DevComponents from './pages/dev/components.jsx'
+import PokemonDetail from './pages/pokemonDetail.jsx'
+import { GameProvider } from './context/GameContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/game" element={<Game />} />
-        <Route path="/pokedex" element={<Pokedex />} />
-        <Route path="/rank-summary" element={<RankSummary />} />
-        <Route path="/dev/components" element={<DevComponents />} />
-      </Routes>
+      <GameProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/game" element={<Game />} />
+          <Route path="/pokedex" element={<Pokedex />} />
+          <Route path="/pokemon/:id" element={<PokemonDetail />} />
+        </Routes>
+      </GameProvider>
     </BrowserRouter>
   </StrictMode>,
 )
