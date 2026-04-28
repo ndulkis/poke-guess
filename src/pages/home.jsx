@@ -1,13 +1,5 @@
 import { Link } from 'react-router-dom'
-
-const ranks = [
-  { title: 'Youngster Joey', threshold: '0–149', color: 'border-orange-400', text: 'text-orange-400', bg: 'bg-orange-400/10', desc: "My Rattata is in the top percentage!" },
-  { title: 'Grunt',        threshold: '150–299',  color: 'border-gray-500',   text: 'text-gray-400',   bg: 'bg-gray-500/10',   desc: 'Getting started. Keep practicing!' },
-  { title: 'Gym Leader',   threshold: '300–449',  color: 'border-green-500',  text: 'text-green-400',  bg: 'bg-green-500/10',  desc: 'Respectable. Good Pokémon fundamentals' },
-  { title: 'Ace Trainer',  threshold: '450–599',  color: 'border-blue-500',   text: 'text-blue-400',   bg: 'bg-blue-500/10',   desc: 'Solid performance with room to grow' },
-  { title: 'Elite Four',   threshold: '600–799',  color: 'border-purple-500', text: 'text-purple-400', bg: 'bg-purple-500/10', desc: 'Exceptional knowledge with strong speed' },
-  { title: 'Champion',     threshold: '800+',     color: 'border-yellow-400', text: 'text-yellow-400', bg: 'bg-yellow-400/10', desc: 'Near-perfect accuracy under pressure' },
-]
+import { RANKS as ranks } from '../utils/scoring'
 
 const steps = [
   { n: '01', heading: 'Spot the Silhouette', body: "A Pokémon's silhouette appears. Study its shape — every pixel is a clue." },
