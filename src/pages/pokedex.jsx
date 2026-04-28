@@ -1,73 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
-import { TYPE_COLORS } from '../utils/typeColors'
+import SkeletonCard from '../components/SkeletonCard'
+import PokemonCard from '../components/PokemonCard'
+import FilterControls from '../components/FilterControls'
 
-const ALL_TYPES = Object.keys(TYPE_COLORS)
 const PAGE_SIZE = 48
 const BASE_URL = 'https://pokeapi.co/api/v2'
-
-function PokemonCard({ pokemon }) {
-  const { id, name, types } = pokemon
-  const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`
-  const primaryType = types[0]
-  const colors = TYPE_COLORS[primaryType] || TYPE_COLORS.normal
-
-  return (
-    <Link
-      to={`/pokemon/${id}`}
-      className="group bg-gray-900 border border-gray-800 rounded-xl p-3 flex flex-col items-center gap-2 hover:border-gray-600 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-lg"
-      style={{ '--ring-color': colors.ring }}
-    >
-      <div className="relative w-16 h-16 flex items-center justify-center">
-        <div
-          className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"
-          style={{ background: `radial-gradient(circle, ${colors.ring}40 0%, transparent 70%)` }}
-        />
-        <img
-          src={imageUrl}
-          alt={name}
-          className="w-16 h-16 object-contain relative z-10 drop-shadow-md group-hover:drop-shadow-lg transition-all duration-200"
-          loading="lazy"
-        />
-      </div>
-
-      <div className="text-center w-full">
-        <p className="text-[10px] text-gray-600 font-mono tracking-wider">
-          #{String(id).padStart(4, '0')}
-        </p>
-        <p className="text-xs font-semibold capitalize leading-tight text-gray-100 truncate w-full text-center">
-          {name}
-        </p>
-      </div>
-
-      <div className="flex gap-1 flex-wrap justify-center">
-        {types.map(type => {
-          const c = TYPE_COLORS[type] || TYPE_COLORS.normal
-          return (
-            <span
-              key={type}
-              className={`text-[9px] px-2 py-0.5 rounded-full capitalize font-semibold tracking-wide ${c.bg} ${c.text}`}
-            >
-              {type}
-            </span>
-          )
-        })}
-      </div>
-    </Link>
-  )
-}
-
-function SkeletonCard() {
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 flex flex-col items-center gap-2 animate-pulse">
-      <div className="w-16 h-16 bg-gray-800 rounded-full" />
-      <div className="w-10 h-2 bg-gray-800 rounded" />
-      <div className="w-16 h-3 bg-gray-800 rounded" />
-      <div className="w-12 h-3 bg-gray-800 rounded" />
-    </div>
-  )
-}
 
 function Pokedex() {
   const [pokemonList, setPokemonList] = useState([])
@@ -176,68 +114,12 @@ function Pokedex() {
           )}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
-          <div className="relative flex-1">
-            <svg
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search Pokémon..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-600 transition-colors"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          <select
-            value={selectedType}
-            onChange={e => setSelectedType(e.target.value)}
-            className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600 transition-colors capitalize sm:w-44 appearance-none cursor-pointer"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 12px center',
-              backgroundSize: '16px',
-              paddingRight: '40px',
-            }}
-          >
-            <option value="">All Types</option>
-            {ALL_TYPES.map(t => (
-              <option key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Type filter chips */}
-        {selectedType && (
-          <div className="flex gap-2 mb-6 flex-wrap">
-            <button
-              onClick={() => setSelectedType('')}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-semibold capitalize transition-all
-                ${TYPE_COLORS[selectedType]?.bg} ${TYPE_COLORS[selectedType]?.text} border border-current/30`}
-            >
-              {selectedType}
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
+        <FilterControls
+          search={search}
+          onSearchChange={setSearch}
+          selectedType={selectedType}
+          onTypeChange={setSelectedType}
+        />
 
         {/* Loading state */}
         {loading ? (

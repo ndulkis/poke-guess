@@ -3,15 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { getPokemonDetail } from '../services/pokeapi'
 import { TYPE_COLORS } from '../utils/typeColors'
-
-const STAT_CONFIG = {
-  hp:              { label: 'HP',       color: 'bg-red-500' },
-  attack:          { label: 'Attack',   color: 'bg-orange-500' },
-  defense:         { label: 'Defense',  color: 'bg-yellow-400' },
-  'special-attack':  { label: 'Sp. Atk', color: 'bg-blue-500' },
-  'special-defense': { label: 'Sp. Def', color: 'bg-green-500' },
-  speed:           { label: 'Speed',    color: 'bg-pink-500' },
-}
+import {STAT_CONFIG} from '../utils/statConfig'
 
 function PokemonDetail() {
   const { id } = useParams()
