@@ -1,22 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { getRandomPokemon } from '../services/pokeapi';
+import { calculatePoints, getTimePenalty, getRank } from '../utils/scoring';
+import { formatShareText } from '../utils/shareFormatter';
+import { useGame } from '../context/GameContext';
 
 function Game() {
+  const { endGame } = useGame();
+
   const [currentPokemon, setCurrentPokemon] = useState(null);
   const [guess, setGuess] = useState('');
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(180); 
-  
-  // MISSING STATE ADDED HERE:
+  const [timeLeft, setTimeLeft] = useState(180);
   const [missCount, setMissCount] = useState(0);
   const [revealedLetters, setRevealedLetters] = useState([]);
+  const [solvedCount, setSolvedCount] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     loadNewPokemon();
   }, []);
 
   useEffect(() => {
+    if (gameOver) return;
     if (timeLeft > 0) {
       const timer = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
@@ -25,7 +32,7 @@ function Game() {
     } else {
       handleTimeUp();
     }
-  }, [timeLeft]);
+  }, [timeLeft, gameOver]);
 
   const loadNewPokemon = async () => {
     setLoading(true);
@@ -33,23 +40,8 @@ function Game() {
     setCurrentPokemon(pokemon);
     setLoading(false);
     setGuess('');
-    setMissCount(0); // Reset misses for the new Pokemon
-    setRevealedLetters([]); // Clear the Wordle persistence
-  };
-
-  // MISSING SCORING LOGIC ADDED HERE :
-  const calculatePoints = (misses) => {
-    if (misses === 0) return 100;
-    if (misses === 1) return 50;
-    if (misses === 2) return 40;
-    if (misses === 3) return 35;
-    return 30; // 4+ misses
-  };
-
-  const applyPenalties = (misses) => {
-    if (misses === 3 || misses === 4) setTimeLeft(prev => prev - 5);
-    if (misses === 5) setTimeLeft(prev => prev - 10);
-    if (misses >= 6) setTimeLeft(prev => prev - 15);
+    setMissCount(0);
+    setRevealedLetters([]);
   };
 
   const handleGuess = (e) => {
@@ -60,12 +52,12 @@ function Game() {
     if (currentGuess === correctName) {
       const points = calculatePoints(missCount);
       setScore(prev => prev + points);
+      setSolvedCount(prev => prev + 1);
       loadNewPokemon();
     } else {
       const newMissCount = missCount + 1;
       setMissCount(newMissCount);
 
-      // Wordle Logic: Compare and persist [cite: 10, 37]
       const newRevealed = [...revealedLetters];
       for (let i = 0; i < correctName.length; i++) {
         if (currentGuess[i] === correctName[i]) {
@@ -73,16 +65,34 @@ function Game() {
         }
       }
       setRevealedLetters(newRevealed);
-      applyPenalties(newMissCount);
-      
-      // Auto-populate the input with correct letters [cite: 38]
-      const nextPlaceholder = correctName.split('').map((char, i) => newRevealed[i] || "").join("");
+
+      const penalty = getTimePenalty(newMissCount);
+      if (penalty > 0) setTimeLeft(prev => Math.max(0, prev - penalty));
+
+      const nextPlaceholder = correctName.split('').map((_, i) => newRevealed[i] || '').join('');
       setGuess(nextPlaceholder);
     }
   };
 
   const handleTimeUp = () => {
-    alert(`Time's up! Final Score: ${score}`);
+    setGameOver(true);
+    endGame(score, solvedCount);
+  };
+
+  const handlePlayAgain = () => {
+    setScore(0);
+    setSolvedCount(0);
+    setTimeLeft(180);
+    setGameOver(false);
+    setCopied(false);
+    loadNewPokemon();
+  };
+
+  const handleShare = () => {
+    const rank = getRank(score);
+    navigator.clipboard.writeText(formatShareText(score, rank.title, solvedCount));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const formatTime = (seconds) => {
@@ -92,31 +102,58 @@ function Game() {
   };
 
   const getLetterStyle = (char, index, targetName) => {
-    if (!char) return "border-slate-800 bg-black text-white"; 
-    
+    if (!char) return 'border-slate-800 bg-black text-white';
     const upperTarget = targetName.toUpperCase();
     const upperChar = char.toUpperCase();
-
-    // Green: Right letter, right spot
     if (upperTarget[index] === upperChar) {
-      return "border-green-500 bg-green-500/20 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]";
+      return 'border-green-500 bg-green-500/20 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
     }
-    // Yellow: Right letter, wrong spot
     if (upperTarget.includes(upperChar)) {
-      return "border-yellow-500 bg-yellow-500/20 text-yellow-500";
+      return 'border-yellow-500 bg-yellow-500/20 text-yellow-500';
     }
-    // Gray: Wrong letter
-    return "border-slate-700 bg-slate-900 text-slate-500";
+    return 'border-slate-700 bg-slate-900 text-slate-500';
   };
 
-  useEffect(() => {
-    if (guess.length === currentPokemon?.name.length) {
-      // Optional: auto-submit when the last letter is typed
-      // handleGuess(); 
-    }
-  }, [guess]);
-
   if (loading) return <div className="text-white text-center mt-20">Loading Pokémon...</div>;
+
+  if (gameOver) {
+    const rank = getRank(score);
+    return (
+      <div className="min-h-screen bg-[#05070a] text-white flex flex-col items-center justify-center py-12 px-4 font-sans">
+        <div className="w-full max-w-sm bg-[#0f172a]/80 border border-slate-800 rounded-3xl p-10 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center flex flex-col items-center gap-6">
+          <p className="text-slate-500 uppercase tracking-[0.25em] text-xs font-black">Time's Up</p>
+
+          <div className={`border-2 ${rank.color} ${rank.bg} rounded-2xl px-5 py-2`}>
+            <span className={`font-black text-lg ${rank.text}`}>{rank.title}</span>
+          </div>
+
+          <div>
+            <p className="text-6xl font-black font-mono tracking-tighter">{score}</p>
+            <p className="text-slate-500 text-xs uppercase tracking-widest mt-1">points</p>
+          </div>
+
+          <p className="text-slate-400 text-sm">
+            <span className="text-white font-bold">{solvedCount}</span> Pokémon solved
+          </p>
+
+          <div className="flex flex-col gap-3 w-full mt-2">
+            <button
+              onClick={handleShare}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all uppercase tracking-widest text-xs"
+            >
+              {copied ? 'Copied!' : 'Share Result'}
+            </button>
+            <button
+              onClick={handlePlayAgain}
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl shadow-lg shadow-red-900/40 transition-all uppercase tracking-widest text-xs"
+            >
+              Play Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#05070a] text-white flex flex-col items-center py-12 px-4 font-sans">
@@ -130,21 +167,21 @@ function Game() {
       </div>
 
       <div
-      onClick={() => document.querySelector('input').focus()} 
-      className="w-full max-w-md bg-[#0f172a]/80 border border-red-900/30 rounded-3xl p-8 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        onClick={() => document.querySelector('input').focus()}
+        className="w-full max-w-md bg-[#0f172a]/80 border border-red-900/30 rounded-3xl p-8 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+      >
         <div className="relative aspect-square mb-8 flex items-center justify-center bg-black/40 rounded-2xl border border-slate-800 overflow-hidden">
-          <img 
-            src={currentPokemon?.image} 
-            alt="Who's that Pokemon?" 
+          <img
+            src={currentPokemon?.image}
+            alt="Who's that Pokemon?"
             className="w-4/5 h-4/5 object-contain brightness-0 invert opacity-90 transition-all duration-500"
           />
         </div>
 
         <form onSubmit={handleGuess} className="space-y-6">
-          {/* The Wordle Grid */}
           <div className="flex flex-wrap justify-center gap-1.5 mb-6">
             {currentPokemon?.name.split('').map((_, index) => {
-              const char = guess[index] || "";
+              const char = guess[index] || '';
               return (
                 <div
                   key={index}
@@ -155,26 +192,25 @@ function Game() {
               );
             })}
           </div>
-          
-          {/* Real input hidden from view, but captures typing */}
-          <input 
-            type="text" 
+
+          <input
+            type="text"
             value={guess}
             onChange={(e) => setGuess(e.target.value.slice(0, currentPokemon.name.length))}
             className="fixed inset-0 opacity-0 cursor-default"
             autoFocus
           />
 
-          <button 
+          <button
             type="submit"
             className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-xl shadow-lg shadow-red-900/40 transition-all uppercase tracking-[0.15em] text-sm"
           >
             Submit Guess
           </button>
-        </form>      
+        </form>
       </div>
 
-      <button 
+      <button
         onClick={loadNewPokemon}
         className="mt-8 text-slate-600 hover:text-red-500 font-bold uppercase tracking-widest text-xs transition-all"
       >
