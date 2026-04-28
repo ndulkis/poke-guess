@@ -1,26 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
-
-const TYPE_COLORS = {
-  normal:   { bg: 'bg-gray-500/20',   text: 'text-gray-300',    ring: '#6b7280' },
-  fire:     { bg: 'bg-orange-500/20', text: 'text-orange-300',  ring: '#f97316' },
-  water:    { bg: 'bg-blue-500/20',   text: 'text-blue-300',    ring: '#3b82f6' },
-  electric: { bg: 'bg-yellow-400/20', text: 'text-yellow-300',  ring: '#facc15' },
-  grass:    { bg: 'bg-green-500/20',  text: 'text-green-300',   ring: '#22c55e' },
-  ice:      { bg: 'bg-cyan-400/20',   text: 'text-cyan-300',    ring: '#22d3ee' },
-  fighting: { bg: 'bg-red-700/20',    text: 'text-red-300',     ring: '#b91c1c' },
-  poison:   { bg: 'bg-purple-600/20', text: 'text-purple-300',  ring: '#9333ea' },
-  ground:   { bg: 'bg-amber-600/20',  text: 'text-amber-300',   ring: '#d97706' },
-  flying:   { bg: 'bg-sky-400/20',    text: 'text-sky-300',     ring: '#38bdf8' },
-  psychic:  { bg: 'bg-pink-500/20',   text: 'text-pink-300',    ring: '#ec4899' },
-  bug:      { bg: 'bg-lime-600/20',   text: 'text-lime-300',    ring: '#65a30d' },
-  rock:     { bg: 'bg-stone-500/20',  text: 'text-stone-300',   ring: '#78716c' },
-  ghost:    { bg: 'bg-violet-700/20', text: 'text-violet-300',  ring: '#6d28d9' },
-  dragon:   { bg: 'bg-indigo-600/20', text: 'text-indigo-300',  ring: '#4f46e5' },
-  dark:     { bg: 'bg-zinc-700/20',   text: 'text-zinc-300',    ring: '#3f3f46' },
-  steel:    { bg: 'bg-slate-500/20',  text: 'text-slate-300',   ring: '#64748b' },
-  fairy:    { bg: 'bg-rose-400/20',   text: 'text-rose-300',    ring: '#fb7185' },
-}
+import { TYPE_COLORS } from '../utils/typeColors'
 
 const ALL_TYPES = Object.keys(TYPE_COLORS)
 const PAGE_SIZE = 48
@@ -33,8 +14,9 @@ function PokemonCard({ pokemon }) {
   const colors = TYPE_COLORS[primaryType] || TYPE_COLORS.normal
 
   return (
-    <div
-      className="group bg-gray-900 border border-gray-800 rounded-xl p-3 flex flex-col items-center gap-2 hover:border-gray-600 transition-all duration-200 cursor-default hover:scale-[1.02] hover:shadow-lg"
+    <Link
+      to={`/pokemon/${id}`}
+      className="group bg-gray-900 border border-gray-800 rounded-xl p-3 flex flex-col items-center gap-2 hover:border-gray-600 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-lg"
       style={{ '--ring-color': colors.ring }}
     >
       <div className="relative w-16 h-16 flex items-center justify-center">
@@ -72,7 +54,7 @@ function PokemonCard({ pokemon }) {
           )
         })}
       </div>
-    </div>
+    </Link>
   )
 }
 
