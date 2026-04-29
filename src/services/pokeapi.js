@@ -43,12 +43,16 @@ export const getPokemonDetail = async (id) => {
   }
 };
 
-export const getRandomPokemon = async () => {
-  // Currently 1025 Pokémon in the National Dex
-  const randomId = Math.floor(Math.random() * 1025) + 1;
+export const getRandomPokemon = async (seededRandom) => {
+  const BASE_URL = 'https://pokeapi.co/api/v2';
+  const totalPokemon = 1025; 
+  
+  // Use the seed if it exists, otherwise fallback to Math.random()
+  const randomValue = seededRandom !== undefined ? seededRandom : Math.random();
+  const id = Math.floor(randomValue * totalPokemon) + 1;
   
   try {
-    const response = await fetch(`${BASE_URL}/pokemon/${randomId}`);
+    const response = await fetch(`${BASE_URL}/pokemon/${id}`);
     if (!response.ok) throw new Error('Network response was not ok');
     
     const data = await response.json();
@@ -57,10 +61,14 @@ export const getRandomPokemon = async () => {
       name: data.name,
       image: data.sprites.other['official-artwork'].front_default,
       id: data.id,
-      types: data.types.map(t => t.type.name)
+      pixelSprite: data.sprites.front_default,
+      types: data.types.map(t => t.type.name),
+      cry: data.cries?.latest || data.cries?.legacy
     };
   } catch (error) {
     console.error("Error fetching Pokémon:", error);
     return null;
   }
 };
+// services/pokeapi.js
+
