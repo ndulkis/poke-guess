@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar'
 import SkeletonCard from '../components/SkeletonCard'
 import PokemonCard from '../components/PokemonCard'
 import FilterControls from '../components/FilterControls'
+import { getCachedPokedex, setCachedPokedex } from '../utils/pokedexCache'
 
 const PAGE_SIZE = 48
 const BASE_URL = 'https://pokeapi.co/api/v2'
@@ -18,6 +19,14 @@ function Pokedex() {
 
   useEffect(() => {
     async function load() {
+      const cached = getCachedPokedex()
+      if (cached) {
+        setPokemonList(cached)
+        setLoadingProgress(100)
+        setLoading(false)
+        return
+      }
+
       setLoading(true)
       setLoadingProgress(10)
 
@@ -64,6 +73,7 @@ function Pokedex() {
       }
 
       const full = baseList.map(p => ({ ...p, types: typeMap[p.id] || [] }))
+      setCachedPokedex(full)
       setPokemonList(full)
       setLoadingProgress(100)
       setTimeout(() => setLoading(false), 150)
