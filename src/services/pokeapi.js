@@ -62,6 +62,7 @@ export const getRandomPokemon = async (seededRandom) => {
       image: data.sprites.other['official-artwork'].front_default,
       id: data.id,
       pixelSprite: data.sprites.front_default,
+      shinySprite: data.sprites.front_shiny,
       types: data.types.map(t => t.type.name),
       cry: data.cries?.latest || data.cries?.legacy
     };
