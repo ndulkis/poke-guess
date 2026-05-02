@@ -6,12 +6,15 @@ import { useGame } from '../context/GameContext';
 import Navbar from '../components/Navbar';
 import { getDailySeed, createPRNG } from '../services/seedEngine';
 import { useRef } from 'react';
-
+import HistorySidebar from '../components/HistorySidebar';
+import GameOverModal from '../components/GameOverModal';
+import GuessInput from '../components/GuessInput';
+import PokemonStage from '../components/PokemonStage';
+import FeedbackPopup from '../components/FeedbackPopup';
 
 function Game() {
   const prngRef = useRef(createPRNG(getDailySeed()));
   const { endGame } = useGame();
-
   const [currentPokemon, setCurrentPokemon] = useState(null);
   const [guess, setGuess] = useState('');
   const [score, setScore] = useState(0);
@@ -29,26 +32,36 @@ function Game() {
   const [stats, setStats] = useState({ perfect: 0, great: 0, good: 0, okay: 0 });
   const [pokemonQueue, setPokemonQueue] = useState([]);
   const QUEUE_SIZE = 5; // How many to keep "on deck"
-
+  const hasLoadedRef = useRef(false);
+  
   useEffect(() => {
-    const startLoading = async () => {
-      // 1. Get the first few ready
+    if (hasLoadedRef.current) return;
+
+  const startLoading = async () => {
+    try {
+      hasLoadedRef.current = true; // Mark as initialized
       const initialBatch = [];
       for(let i = 0; i < QUEUE_SIZE; i++) {
         const p = await getRandomPokemon(prngRef.current());
         initialBatch.push(p);
       }
-      setPokemonQueue(initialBatch);
       
-      // 2. Set the very first one to the screen
-      setCurrentPokemon(initialBatch[0]);
-      setPokemonQueue(prev => prev.slice(1));
+      const firstPoke = initialBatch[0];
+      setPokemonQueue(initialBatch.slice(1));
+      setCurrentPokemon(firstPoke);
+      
+      // Delay the cry slightly to ensure the browser allows audio playback
+      setTimeout(() => playCry(firstPoke.cry), 100);
+      
       startTimeRef.current = Date.now();
       setLoading(false);
-    };
-    
-    startLoading();
-  }, []);
+    } catch (error) {
+      console.error("Initial load failed:", error);
+    }
+  };
+  
+  startLoading();
+}, []);
 
   useEffect(() => {
     if (gameOver) return;
@@ -78,7 +91,9 @@ function Game() {
   };
 
   const handleGuess = (e) => {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     const correctName = currentPokemon.name.toLowerCase();
     const currentGuess = guess.toLowerCase();
 
@@ -148,13 +163,12 @@ function Game() {
         streak: newStreak
       };
 
-      // History bar shows LAST 5 
+      // History bar shows LAST 7 mons 
       setHistory(prev => [historyItem, ...prev].slice(0, 7));
       // Full Collection (Everything for game over screen)
       setAllSolved(prev => [...prev, historyItem]);
 
       setStreak(newStreak);
-      playCry(currentPokemon.cry, true);
 
       nextPokemon();
 
@@ -177,10 +191,8 @@ function Game() {
       const nextPlaceholder = correctName.split('').map((_, i) => newRevealed[i] || '').join('');
       setGuess(nextPlaceholder);
       
-      // Optional: If you want incorrect guesses to show in history, do it here. 
-      // Otherwise, just leave the streak logic:
+      // Optional: If we  want incorrect guesses to show in history, do it here. 
       setStreak(0);
-      playCry(null, false);
     }
 
     // IMPORTANT: Remove the old "const result = ..." and "setHistory" that used to be here!
@@ -192,29 +204,47 @@ function Game() {
     endGame(score, solvedCount);
   };
 
-  const handlePlayAgain = async () => { //aysnc
+  const handlePlayAgain = async () => {
+    setLoading(true); // 1. Start the loading screen
+    
+    // 2. Reset seed engine
     prngRef.current = createPRNG(getDailySeed());
-    //Reset seed engine
-    prngRef.current = createPRNG(getDailySeed());
-    // Clear game state
+    
+    // 3. Clear all game states
     setScore(0);
     setSolvedCount(0);
     setTimeLeft(180);
     setGameOver(false);
     setCopied(false);
     setHistory([]);
-    setAllSolved([]); // Important: Clear the collection
-    setStats({ perfect: 0, great: 0, good: 0, okay: 0 }); // Important: Clear stats
+    setAllSolved([]);
+    setStats({ perfect: 0, great: 0, good: 0, okay: 0 });
+    setGuess('');
+    setMissCount(0);
+    setRevealedLetters([]);
 
-    // Re-initialize the queue properly
-    const initialBatch = [];
-    for(let i = 0; i < QUEUE_SIZE; i++) {
-      const p = await getRandomPokemon(prngRef.current());
-      initialBatch.push(p);
+    try {
+      // 4. Re-initialize the queue properly
+      const initialBatch = [];
+      for(let i = 0; i < QUEUE_SIZE; i++) {
+        const p = await getRandomPokemon(prngRef.current());
+        initialBatch.push(p);
+      }
+
+      const firstPoke = initialBatch[0];
+      setCurrentPokemon(firstPoke);
+      setPokemonQueue(initialBatch.slice(1));
+
+      playCry(firstPoke.cry);
+      startTimeRef.current = Date.now();
+      
+      // 5. CRITICAL: Turn loading OFF so the game actually shows up!
+      setLoading(false); 
+    } catch (error) {
+      console.error("Failed to restart game:", error);
+      // Even if it fails, turn off loading so the user isn't stuck
+      setLoading(false); 
     }
-    setPokemonQueue(initialBatch.slice(1));
-    setCurrentPokemon(initialBatch[0]);
-    startTimeRef.current = Date.now();
   };
 
   const handleShare = () => {
@@ -243,15 +273,11 @@ function Game() {
     return 'border-slate-700 bg-slate-900 text-slate-500';
   };
 
-const playCry = (url, isCorrect) => {
-    // If it's a wrong answer, we use the local poison sound
-    const audio = new Audio(isCorrect ? url : '/sounds/poison.mp3');
-    
-    // 0.03 is the "Goldilocks" volume: audible but not annoying.
-    audio.volume = 0.03; 
-    
-    // Standard error handling in case the browser blocks it
-    audio.play().catch(e => console.log("Audio play prevented:", e));
+const playCry = (url) => {
+    if (!url) return;
+      const audio = new Audio(url);
+      audio.volume = 0.03; 
+      audio.play().catch(e => console.log("Audio play prevented:", e));
   };
 
   // In Game.jsx, update this state definition:
@@ -259,7 +285,6 @@ const [feedback, setFeedback] = useState({
     text: '', 
     points: 0, 
     visible: false,
-    // ADD THESE:
     borderColor: 'border-yellow-400', // for the left border
     textColor: 'text-yellow-400'      // for the big text
   });
@@ -286,6 +311,20 @@ const refillQueue = async () => {
     });
   };
 
+  // Auto-submit effect: watches the 'guess' variable
+  useEffect(() => {
+    if (!currentPokemon || gameOver) return;
+
+    const currentGuess = guess.toLowerCase().trim();
+    const correctName = currentPokemon.name.toLowerCase();
+
+    // If the guess matches the name perfectly, trigger the handleGuess logic
+    if (currentGuess === correctName && currentGuess.length > 0) {
+      // We pass 'null' because there's no "event" (e) like a button click
+      handleGuess({ preventDefault: () => {} });
+    }
+  }, [guess, currentPokemon, gameOver]);
+
 const nextPokemon = () => {
     if (pokemonQueue.length === 0) return; 
 
@@ -296,6 +335,7 @@ const nextPokemon = () => {
     setRevealedLetters([]);
     
     setCurrentPokemon(next);
+    playCry(next.cry, true);
     setPokemonQueue(prev => prev.slice(1));
     refillQueue();
 
@@ -305,214 +345,90 @@ const nextPokemon = () => {
 if (loading) return <div className="text-white text-center mt-20">Loading Pokémon...</div>;
 
   // We wrap EVERYTHING in one Fragment so the Navbar is always at the top
-  return (
-    <div className="min-h-screen bg-[#05070a] flex flex-col relative overflow-x-hidden">
-      <Navbar /> 
+return (
+  <div className="min-h-screen bg-[#05070a] flex flex-col relative overflow-x-hidden">
+    {/* 1. NAVBAR - Keep this outside the main tags so it's always there */}
+    <Navbar /> 
 
-      <main className="flex-grow flex flex-col items-center py-8 px-4 font-sans text-white relative">
-        {/* Invisible Preloader */}
-        <div className="hidden">
-          {pokemonQueue.map((p, i) => (
-            <img key={i} src={p.image} />
-          ))}
-        </div>
-         {/* NEW FEEDBACK POPUP: RE-STYLED AND RE-POSITIONED */}
-        <div 
-          className={`absolute top-48 z-50 left-[calc(50%-28rem)] flex items-center justify-center transition-all duration-500 ease-in-out transform 
-            ${feedback.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}
-        >
-          <div 
-            className={`bg-[#0f172a]/90 backdrop-blur-xl border-l-4 p-6 rounded-r-2xl shadow-2xl pointer-events-auto 
-              ${feedback.borderColor} /* New border color dynamic class */`}
-          >
-            <p 
-              className={`font-black tracking-tighter text-3xl italic drop-shadow-lg uppercase 
-                ${feedback.textColor} /* New text color dynamic class */`}
-            >
-              {feedback.text}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-white font-mono font-bold text-2xl">+{feedback.points}</span>
-              <span className="text-slate-500 font-black text-xs uppercase tracking-widest">pts</span>
-            </div>
-          </div>
-        </div>
-        {gameOver ? (
-          /* --- UPDATED GAME OVER SCREEN --- */
-          <div className="w-full max-w-md bg-[#0f172a]/80 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center flex flex-col items-center gap-6 mt-10">
-            <p className="text-slate-500 uppercase tracking-[0.25em] text-xs font-black">Time's Up</p>
-            
-            {(() => {
-              const rank = getRank(score);
-              return (
-                <div className={`border-2 ${rank.color} ${rank.bg} rounded-2xl px-5 py-2`}>
-                  <span className={`font-black text-lg ${rank.text}`}>{rank.title}</span>
-                </div>
-              );
-            })()}
+    <main className="flex-grow flex flex-col items-start justify-start md:items-center md:justify-center py-0 md:py-8 px-4 font-sans text-white relative">      
+      {/* 2. DESKTOP FEEDBACK - Hidden on mobile, shows at top on desktop */}
+      <div className="origin-top-left scale-90 md:scale-100 w-full flex flex-col items-start md:items-center">        <FeedbackPopup feedback={feedback} />
+      </div>
 
-            {/* Speed Stats Row */}
-            <div className="grid grid-cols-4 gap-2 w-full">
-              <div className="flex flex-col p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
-                <span className="text-cyan-400 font-black text-lg">{stats.perfect}</span>
-                <span className="text-[8px] text-cyan-400/60 uppercase font-black">Perf</span>
-              </div>
-              <div className="flex flex-col p-2 bg-green-500/10 border border-green-500/20 rounded-xl">
-                <span className="text-green-400 font-black text-lg">{stats.great}</span>
-                <span className="text-[8px] text-green-400/60 uppercase font-black">Great</span>
-              </div>
-              <div className="flex flex-col p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-                <span className="text-yellow-400 font-black text-lg">{stats.good}</span>
-                <span className="text-[8px] text-yellow-400/60 uppercase font-black">Good</span>
-              </div>
-              <div className="flex flex-col p-2 bg-slate-800/50 border border-slate-700 rounded-xl">
-                <span className="text-slate-400 font-black text-lg">{stats.okay}</span>
-                <span className="text-[8px] text-slate-500 uppercase font-black">Okay</span>
-              </div>
-            </div>
-
-            {/* Pokémon Showcase (Sorted: Shinies First) */}
-            <div className="w-full bg-black/30 rounded-2xl p-4 border border-slate-800/50">
-              <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-3 text-left">Session Collection</p>
-              <div className="flex flex-wrap justify-center gap-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                {[...allSolved]
-                  .sort((a, b) => (b.isPerfect === a.isPerfect ? 0 : b.isPerfect ? 1 : -1))
-                  .map((poke, i) => (
-                    <div 
-                      key={i} 
-                      className={`p-1 rounded-lg border ${
-                        poke.isPerfect ? 'border-cyan-500/50 bg-cyan-500/20 shadow-[0_0_8px_rgba(6,182,212,0.2)]' : 'border-slate-800 bg-slate-900/40'
-                      }`}
-                    >
-                      <img 
-                        src={poke.sprite} 
-                        className={`w-10 h-10 object-contain ${poke.isPerfect ? 'drop-shadow-[0_0_5px_white]' : ''}`}
-                  
-                        alt={poke.name}
-                      />
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            <div className="flex justify-between w-full px-2 border-t border-slate-800 pt-6">
-              <div className="text-left">
-                <p className="text-4xl font-black font-mono tracking-tighter">{score}</p>
-                <p className="text-slate-500 text-[10px] uppercase tracking-widest">Total Score</p>
-              </div>
-              <div className="text-right">
-                <p className="text-4xl font-black font-mono tracking-tighter">{solvedCount}</p>
-                <p className="text-slate-500 text-[10px] uppercase tracking-widest">Caught</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 w-full mt-2">
-              <button onClick={handleShare} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all uppercase tracking-widest text-xs">
-                {copied ? 'Copied!' : 'Share Result'}
-              </button>
-              <button onClick={handlePlayAgain} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl shadow-lg shadow-red-900/40 transition-all uppercase tracking-widest text-xs">
-                Play Again
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* --- ACTIVE GAME SCREEN --- */
-          <>
-            <div className="text-center mb-6">
-              <div className="text-white text-5xl font-mono font-bold tracking-tighter mb-1 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                {formatTime(timeLeft)}
-              </div>
-              <div className="text-slate-500 uppercase tracking-[0.2em] text-xs font-black">
-                Score: <span className="text-white">{score}</span>
-              </div>
-            </div>
-
-            <div
-              onClick={() => document.querySelector('input').focus()}
-              className="w-full max-w-sm bg-[#0f172a]/80 border border-red-900/30 rounded-3xl p-6 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-            >
-
-              <div className="relative aspect-square mb-8 flex items-center justify-center bg-black/40 rounded-2xl border border-slate-800 overflow-hidden">
-                <img
-                  src={currentPokemon?.image}
-                  alt="Who's that Pokemon?"
-                  className="h-4/5 w-auto object-contain brightness-0 invert opacity-90 transition-all duration-500"
-                />
-              </div>
-
-              <form onSubmit={handleGuess} className="space-y-4">
-                <div className="flex flex-wrap justify-center gap-1.5 mb-4">
-                  {currentPokemon?.name.split('').map((_, index) => {
-                    const char = guess[index] || '';
-                    return (
-                      <div key={index} className={`w-8 h-10 border-2 rounded-lg flex items-center justify-center text-xl font-black uppercase transition-all duration-300 ${getLetterStyle(char, index, currentPokemon.name)}`}>
-                        {char}
-                      </div>
-                    );
-                  })}
-                </div>
+      {/* 3. CONDITIONAL LOGIC - This is where the swap happens */}
+      {gameOver ? (
+        /* GAME OVER SCREEN */
+        <GameOverModal 
+          score={score}
+          solvedCount={solvedCount}
+          allSolved={allSolved}
+          stats={stats}
+          handlePlayAgain={handlePlayAgain}
+          handleShare={handleShare}
+          copied={copied}
+        />
+      ) : (
+        /* ACTIVE GAME SCREEN */
+        <>
+      {/* COMPACT HEADER (Mobile: Bar / Desktop: Centered) */}
+      <div className="w-full max-w-sm mb-2 md:mb-4">
         
-                <input
-                  type="text"
-                  value={guess}
-                  onChange={(e) => setGuess(e.target.value.slice(0, currentPokemon.name.length))}
-                  className="fixed opacity-0 pointer-events-none"
-                  autoFocus
-                />
-
-                <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-xl shadow-lg shadow-red-900/40 transition-all uppercase tracking-[0.15em] text-sm">
-                  Submit
-                </button>
-              </form>
-            </div>
-
-            <button onClick={nextPokemon} className="mt-8 text-slate-600 hover:text-red-500 font-bold uppercase tracking-widest text-xs transition-all">
-              Skip Pokémon
-            </button>
-            {/* History Sidebar - Pushed further right */}
-            <div className="hidden xl:flex flex-col gap-3 absolute left-[calc(50%+18rem)] top-24 w-60">
-              <p className="text-slate-500 text-xs font-black uppercase tracking-[0.2em] mb-2 border-b border-slate-800 pb-2">
-                History
-              </p>
-              <div className="flex flex-col gap-3">
-                {history.map((item, index) => (
-                  <div 
-                    key={index} 
-                    className={`flex items-center gap-4 p-3 rounded-2xl border transition-all duration-300 ${
-                      item.isPerfect 
-                        ? 'border-cyan-500/50 bg-cyan-500/20 shadow-[0_0_20px_rgba(6,182,212,0.3)]' // Blue for Perfect
-                        : item.isCorrect 
-                          ? 'border-green-500/30 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.1)]' // Normal Green
-                          : 'border-slate-800 bg-slate-900/50 opacity-40' // Wrong
-                    }`}
-                  >
-                  <img 
-                    src={item.sprite} // This will be the Shiny sprite if item.isPerfect is true
-                    className={`w-14 h-14 object-contain ${item.isPerfect ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`} 
-                    alt={item.name} 
-                    style={{ imageRendering: 'pixelated' }} 
-                  />
-                  <div className="flex flex-col">
-                    <span className={`text-[11px] font-black uppercase tracking-tight truncate w-28 ${item.isPerfect ? 'text-cyan-300' : 'text-white'}`}>
-                      {item.name}
-                    </span>
-                    {item.streak > 1 && item.isCorrect && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className={`${item.isPerfect ? 'text-cyan-400' : 'text-green-400'} text-[10px] font-black italic`}>
-                          {item.streak}x STREAK
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* 1. MOBILE HEADER BAR (Shows on mobile, disappears on md/desktop) */}
+        <div className="flex md:hidden items-center justify-between bg-slate-900/40 border border-slate-800/60 rounded-2xl px-5 py-2.5 backdrop-blur-sm shadow-xl">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Time Left</span>
+            <span className={`font-mono text-lg font-bold leading-none ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+              {formatTime(timeLeft)}
+            </span>
           </div>
-          </>
-        )}
-      </main>
-    </div>
-  );
+          
+          {/* Decorative vertical divider */}
+          <div className="h-8 w-[1px] bg-slate-800/80 mx-2" />
+
+          <div className="flex flex-col text-right">
+            <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Total Score</span>
+            <span className="text-cyan-400 font-mono text-lg font-bold leading-none">
+              {score}
+            </span>
+          </div>
+        </div>
+
+        {/* 2. DESKTOP STATS (Your original style, hidden on mobile) */}
+        <div className="hidden md:block text-center">
+          <div className="text-white text-5xl font-mono font-bold tracking-tighter mb-1 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+            {formatTime(timeLeft)}
+          </div>
+          <div className="text-slate-500 uppercase tracking-[0.2em] text-xs font-black">
+            Score: <span className="text-white">{score}</span>
+          </div>
+        </div>
+      </div>
+
+          {/* THE NEW RESPONSIVE STAGE */}
+          <PokemonStage 
+            pokemon={currentPokemon} 
+            nextPokemon={nextPokemon}
+            feedback={feedback}
+            history={history}
+            gameOver={gameOver} 
+          >
+            {/* The Input lives inside the Stage as 'children' */}
+            <GuessInput 
+              guess={guess}
+              setGuess={setGuess}
+              targetName={currentPokemon.name}
+              handleGuess={handleGuess}
+              getLetterStyle={getLetterStyle}
+            />
+          </PokemonStage>
+        </>
+      )}
+    </main>
+
+    {/* 4. SIDEBAR - Now only shows if game is NOT over */}
+    {!gameOver && <HistorySidebar history={history} />}
+  </div>
+);
 }
 
 export default Game;
