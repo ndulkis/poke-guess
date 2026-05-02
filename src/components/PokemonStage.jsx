@@ -76,7 +76,7 @@ function PokemonStage({ pokemon, children, feedback, history, nextPokemon, gameO
       {/* 4. SKIP BUTTON */}
       <button
         onClick={nextPokemon}
-        className="mt-4 text-slate-700 hover:text-red-500 font-black uppercase text-[10px] tracking-widest transition-all"
+        className="mt-4 text-red-500 font-black uppercase text-[10px] tracking-widest transition-all hover:underline hover:decoration-red-500 underline-offset-4"
       >
         Skip Pokémon
       </button>
