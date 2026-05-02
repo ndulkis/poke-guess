@@ -13,12 +13,12 @@ function PokemonStage({ pokemon, children, feedback, history, nextPokemon, gameO
     <div className="w-full flex flex-col items-center">
       
       {/* MAIN GAME ROW */}
-      <div className="flex flex-row md:flex-col gap-2 w-full max-w-sm items-stretch justify-center relative mb-10">
-        
+      <div className="flex flex-col gap-2 w-full max-w-sm items-center justify-center relative mb-10">
+
         {/* 1. POKEMON CARD */}
-        <div 
+        <div
           onClick={() => document.querySelector('input')?.focus()}
-          className="relative w-2/3 md:w-full aspect-square bg-[#0f172a]/80 border border-slate-800 rounded-3xl flex items-center justify-center overflow-visible shadow-2xl cursor-pointer"
+          className="relative w-full max-w-[260px] md:max-w-none aspect-square bg-[#0f172a]/80 border border-slate-800 rounded-3xl flex items-center justify-center overflow-visible shadow-2xl cursor-pointer"
         >
           <img
             src={pokemon?.image}
@@ -64,30 +64,19 @@ function PokemonStage({ pokemon, children, feedback, history, nextPokemon, gameO
             </div>
           )}
         </div> {/* END POKEMON CARD */}
-
-        {/* 3. VERTICAL SUBMIT BAR (Mobile Only) */}
-        <button 
-          form="guess-form"
-          type="submit"
-          className="md:hidden flex-grow bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-3xl flex items-center justify-center shadow-lg active:scale-95 transition-all z-10"
-        >
-          <span className="vertical-text -rotate-180 font-black text-[10px] tracking-[0.4em] text-white uppercase">
-            SUBMIT
-          </span>
-        </button>
       </div>
 
-      {/* 4. GUESS INPUT AREA (Children) */}
+      {/* 3. GUESS INPUT AREA (Children) */}
       <div className="w-full flex justify-center py-2">
         <div className="w-full max-w-sm">
           {children}
         </div>
       </div>
 
-      {/* 5. SKIP BUTTON */}
-      <button 
-        onClick={nextPokemon} 
-        className="mt-4 text-slate-700 hover:text-red-500 font-black uppercase text-[10px] tracking-widest transition-all"
+      {/* 4. SKIP BUTTON */}
+      <button
+        onClick={nextPokemon}
+        className="mt-4 text-red-500 font-black uppercase text-[10px] tracking-widest transition-all hover:underline hover:decoration-red-500 underline-offset-4"
       >
         Skip Pokémon
       </button>
