@@ -73,16 +73,7 @@ function PokemonStage({ pokemon, children, feedback, history, nextPokemon, gameO
         </div>
       </div>
 
-      {/* 4. SUBMIT BUTTON (Mobile Only) */}
-      <button
-        form="guess-form"
-        type="submit"
-        className="w-full max-w-sm mt-3 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-2xl shadow-lg active:scale-95 transition-all font-black text-sm tracking-[0.4em] text-white uppercase"
-      >
-        Submit
-      </button>
-
-      {/* 5. SKIP BUTTON */}
+      {/* 4. SKIP BUTTON */}
       <button
         onClick={nextPokemon}
         className="mt-4 text-slate-700 hover:text-red-500 font-black uppercase text-[10px] tracking-widest transition-all"
