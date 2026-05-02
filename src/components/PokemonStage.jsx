@@ -18,7 +18,7 @@ function PokemonStage({ pokemon, children, feedback, history, nextPokemon, gameO
         {/* 1. POKEMON CARD */}
         <div
           onClick={() => document.querySelector('input')?.focus()}
-          className="relative w-full aspect-square bg-[#0f172a]/80 border border-slate-800 rounded-3xl flex items-center justify-center overflow-visible shadow-2xl cursor-pointer"
+          className="relative w-full max-w-[260px] md:max-w-none aspect-square bg-[#0f172a]/80 border border-slate-800 rounded-3xl flex items-center justify-center overflow-visible shadow-2xl cursor-pointer"
         >
           <img
             src={pokemon?.image}
